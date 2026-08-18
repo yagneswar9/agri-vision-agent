@@ -213,4 +213,4 @@ If evidence is insufficient, clearly say that the diagnosis needs further verifi
 
             st.error(
                 "Something went wrong. Please try again."
-            )
+           )
