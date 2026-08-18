@@ -10,7 +10,7 @@ st.set_page_config(
 )
 
 st.title("🌾 Agri-Vision Agent")
-st.write("AI-powered farming assistant")
+st.write("Self-verifying AI farming assistant")
 
 uploaded_file = st.file_uploader(
     "📷 Upload a crop photo",
@@ -40,10 +40,12 @@ if uploaded_file:
                 api_key=st.secrets["GEMINI_API_KEY"]
             )
 
-            prompt = """
-You are the Vision Agent of an agricultural AI system.
+            st.subheader("👁️ Vision Agent")
 
-Analyze the uploaded crop image.
+            vision_prompt = """
+You are the Vision Agent in an agricultural AI system.
+
+Analyze this crop image.
 
 Return:
 
@@ -54,28 +56,25 @@ Confidence:
 Evidence:
 What should be checked next:
 
-Important:
+Rules:
 An image alone cannot prove a disease.
 If the image is unclear, say the diagnosis is uncertain.
 Do not recommend a specific pesticide or chemical from the image alone.
 """
 
-            with st.spinner("👁️ Vision Agent analyzing..."):
+            with st.spinner("👁️ Analyzing crop..."):
 
-                response = client.models.generate_content(
+                vision_response = client.models.generate_content(
                     model="gemini-3.6-flash",
                     contents=[
-                        prompt,
+                        vision_prompt,
                         image
                     ]
                 )
 
-            st.subheader("👁️ Vision Agent")
+            vision_result = vision_response.text
 
-            if response.text:
-                st.write(response.text)
-            else:
-                st.warning("The AI did not return a text response.")
+            st.write(vision_result)
 
             st.subheader("🌦️ Weather Agent")
 
@@ -96,14 +95,10 @@ Do not recommend a specific pesticide or chemical from the image alone.
                     timeout=15
                 )
 
-                if geo_response.status_code != 200:
-                    st.error("Unable to find the location.")
-                    st.stop()
-
                 geo_data = geo_response.json()
 
                 if "results" not in geo_data:
-                    st.error("Location not found. Try another city.")
+                    st.error("Location not found.")
                     st.stop()
 
                 location = geo_data["results"][0]
@@ -128,10 +123,6 @@ Do not recommend a specific pesticide or chemical from the image alone.
                     timeout=15
                 )
 
-                if weather_response.status_code != 200:
-                    st.error("Unable to get weather information.")
-                    st.stop()
-
                 weather = weather_response.json()
 
             current = weather["current"]
@@ -140,26 +131,86 @@ Do not recommend a specific pesticide or chemical from the image alone.
             humidity = current["relative_humidity_2m"]
             precipitation = current["precipitation"]
 
-            st.write("📍 Location:", location["name"])
-            st.write("🌡️ Temperature:", temperature, "°C")
-            st.write("💧 Humidity:", humidity, "%")
-            st.write("🌧️ Current precipitation:", precipitation, "mm")
-
             hourly = weather["hourly"]
 
             rain_probability = max(
                 hourly["precipitation_probability"][:12]
             )
 
+            st.write("📍 Location:", location["name"])
+            st.write("🌡️ Temperature:", temperature, "°C")
+            st.write("💧 Humidity:", humidity, "%")
+            st.write("🌧️ Current precipitation:", precipitation, "mm")
             st.write(
-                "🌧️ Maximum rain probability in next 12 hours:",
+                "🌧️ Rain probability next 12 hours:",
                 rain_probability,
                 "%"
             )
 
-            st.success("🌦️ Weather data successfully retrieved.")
+            st.success("🌦️ Weather data retrieved.")
 
-        except Exception:
+            st.subheader("🔎 Verification Agent")
+
+            verification_prompt = f"""
+You are the Verification Agent in a farming AI system.
+
+You received two sources of evidence.
+
+SOURCE 1 — VISION AGENT:
+
+{vision_result}
+
+SOURCE 2 — REAL-TIME WEATHER:
+
+Location: {location["name"]}
+Temperature: {temperature} °C
+Humidity: {humidity} %
+Current precipitation: {precipitation} mm
+Maximum rain probability next 12 hours: {rain_probability} %
+
+Your job is NOT to blindly accept the Vision Agent.
+
+Compare the image diagnosis with the environmental evidence.
+
+Determine:
+
+1. Does the weather/environment support the suspected problem?
+2. Is the diagnosis strongly supported, partially supported, or uncertain?
+3. What evidence supports your conclusion?
+4. What evidence conflicts with it?
+5. What should the farmer check next?
+
+Return exactly:
+
+VERIFICATION STATUS:
+SUPPORT LEVEL:
+REASON:
+CONFLICTING EVIDENCE:
+NEXT STEP:
+
+Important:
+Do not claim that weather alone proves or disproves a plant disease.
+Do not recommend a specific pesticide or chemical.
+If evidence is insufficient, clearly say that the diagnosis needs further verification.
+"""
+
+            with st.spinner("🔎 Verification Agent checking evidence..."):
+
+                verification_response = client.models.generate_content(
+                    model="gemini-3.6-flash",
+                    contents=verification_prompt
+                )
+
+            verification_result = verification_response.text
+
+            st.write(verification_result)
+
+            st.success(
+                "✅ Vision → Weather → Verification completed"
+            )
+
+        except Exception as e:
+
             st.error(
-                "Something went wrong while connecting to the AI or weather service."
+                "Something went wrong. Please try again."
             )
