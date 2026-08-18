@@ -10,6 +10,8 @@ st.set_page_config(
 )
 
 st.title("🌾 Agri-Vision Agent")
+st.caption("Observe → Investigate → Verify → Decide")
+
 st.write("Self-verifying AI farming assistant")
 
 uploaded_file = st.file_uploader(
@@ -40,7 +42,19 @@ if uploaded_file:
                 api_key=st.secrets["GEMINI_API_KEY"]
             )
 
-            st.subheader("👁️ Vision Agent")
+            st.subheader("🤖 Agent Activity")
+
+            activity_box = st.empty()
+            activity_messages = []
+
+            def update_activity(message):
+                activity_messages.append(message)
+                activity_box.markdown(
+                    "\n\n".join(activity_messages)
+                )
+
+            update_activity("🟢 Photo received")
+            update_activity("👁️ Vision Agent analyzing crop...")
 
             vision_prompt = """
 You are the Vision Agent in an agricultural AI system.
@@ -62,68 +76,67 @@ If the image is unclear, say the diagnosis is uncertain.
 Do not recommend a specific pesticide or chemical from the image alone.
 """
 
-            with st.spinner("👁️ Analyzing crop..."):
-
-                vision_response = client.models.generate_content(
-                    model="gemini-3.6-flash",
-                    contents=[
-                        vision_prompt,
-                        image
-                    ]
-                )
+            vision_response = client.models.generate_content(
+                model="gemini-3.6-flash",
+                contents=[
+                    vision_prompt,
+                    image
+                ]
+            )
 
             vision_result = vision_response.text
 
+            update_activity("✅ Vision analysis completed")
+
+            st.subheader("👁️ Vision Agent")
             st.write(vision_result)
 
-            st.subheader("🌦️ Weather Agent")
+            update_activity("🌦️ Weather Agent checking local weather...")
 
-            with st.spinner("🌦️ Checking local weather..."):
+            geo_url = "https://geocoding-api.open-meteo.com/v1/search"
 
-                geo_url = "https://geocoding-api.open-meteo.com/v1/search"
+            geo_params = {
+                "name": city,
+                "count": 1,
+                "language": "en",
+                "format": "json"
+            }
 
-                geo_params = {
-                    "name": city,
-                    "count": 1,
-                    "language": "en",
-                    "format": "json"
-                }
+            geo_response = requests.get(
+                geo_url,
+                params=geo_params,
+                timeout=15
+            )
 
-                geo_response = requests.get(
-                    geo_url,
-                    params=geo_params,
-                    timeout=15
-                )
+            geo_data = geo_response.json()
 
-                geo_data = geo_response.json()
+            if "results" not in geo_data:
+                st.error("Location not found.")
+                st.stop()
 
-                if "results" not in geo_data:
-                    st.error("Location not found.")
-                    st.stop()
+            location = geo_data["results"][0]
 
-                location = geo_data["results"][0]
+            latitude = location["latitude"]
+            longitude = location["longitude"]
 
-                latitude = location["latitude"]
-                longitude = location["longitude"]
+            weather_url = "https://api.open-meteo.com/v1/forecast"
 
-                weather_url = "https://api.open-meteo.com/v1/forecast"
+            weather_params = {
+                "latitude": latitude,
+                "longitude": longitude,
+                "current": "temperature_2m,relative_humidity_2m,precipitation,weather_code",
+                "hourly": "temperature_2m,relative_humidity_2m,precipitation_probability,precipitation",
+                "forecast_days": 2,
+                "timezone": "auto"
+            }
 
-                weather_params = {
-                    "latitude": latitude,
-                    "longitude": longitude,
-                    "current": "temperature_2m,relative_humidity_2m,precipitation,weather_code",
-                    "hourly": "temperature_2m,relative_humidity_2m,precipitation_probability,precipitation",
-                    "forecast_days": 2,
-                    "timezone": "auto"
-                }
+            weather_response = requests.get(
+                weather_url,
+                params=weather_params,
+                timeout=15
+            )
 
-                weather_response = requests.get(
-                    weather_url,
-                    params=weather_params,
-                    timeout=15
-                )
-
-                weather = weather_response.json()
+            weather = weather_response.json()
 
             current = weather["current"]
 
@@ -137,6 +150,10 @@ Do not recommend a specific pesticide or chemical from the image alone.
                 hourly["precipitation_probability"][:12]
             )
 
+            update_activity("✅ Weather data retrieved")
+
+            st.subheader("🌦️ Weather Agent")
+
             st.write("📍 Location:", location["name"])
             st.write("🌡️ Temperature:", temperature, "°C")
             st.write("💧 Humidity:", humidity, "%")
@@ -147,40 +164,25 @@ Do not recommend a specific pesticide or chemical from the image alone.
                 "%"
             )
 
-            st.success("🌦️ Weather data retrieved.")
-
-            st.subheader("🔎 Verification Agent")
-
             verification_prompt = f"""
 You are the Verification Agent in a farming AI system.
 
-You received two sources of evidence.
-
-SOURCE 1 — VISION AGENT:
+VISION AGENT RESULT:
 
 {vision_result}
 
-SOURCE 2 — REAL-TIME WEATHER:
+REAL-TIME WEATHER:
 
 Location: {location["name"]}
 Temperature: {temperature} °C
 Humidity: {humidity} %
 Current precipitation: {precipitation} mm
-Maximum rain probability next 12 hours: {rain_probability} %
+Rain probability next 12 hours: {rain_probability} %
 
-Your job is NOT to blindly accept the Vision Agent.
+Compare the initial image-based diagnosis with the
+environmental evidence.
 
-Compare the image diagnosis with the environmental evidence.
-
-Determine:
-
-1. Does the weather/environment support the suspected problem?
-2. Is the diagnosis strongly supported, partially supported, or uncertain?
-3. What evidence supports your conclusion?
-4. What evidence conflicts with it?
-5. What should the farmer check next?
-
-Return exactly:
+Return:
 
 VERIFICATION STATUS:
 SUPPORT LEVEL:
@@ -188,50 +190,44 @@ REASON:
 CONFLICTING EVIDENCE:
 NEXT STEP:
 
-Important:
-Do not claim that weather alone proves or disproves a plant disease.
+Do not claim that weather alone proves or disproves a disease.
 Do not recommend a specific pesticide or chemical.
-If evidence is insufficient, clearly say that the diagnosis needs further verification.
+If evidence is insufficient, clearly say that further verification is needed.
 """
 
-            with st.spinner("🔎 Verification Agent checking evidence..."):
+            update_activity("🔎 Verification Agent cross-checking evidence...")
 
-                verification_response = client.models.generate_content(
-                    model="gemini-3.6-flash",
-                    contents=verification_prompt
-                )
+            verification_response = client.models.generate_content(
+                model="gemini-3.6-flash",
+                contents=verification_prompt
+            )
 
             verification_result = verification_response.text
 
-            st.write(verification_result)
+            update_activity("✅ Evidence verification completed")
 
-            st.success(
-                "✅ Vision → Weather → Verification completed"
-            )
-            st.subheader("🧠 Decision Agent")
+            st.subheader("🔎 Verification Agent")
+            st.write(verification_result)
 
             decision_prompt = f"""
 You are the Decision Agent of Agri-Vision Agent.
 
-Your job is to convert verified agricultural evidence into a simple,
-safe and practical action plan for a farmer.
-
-VISION AGENT RESULT:
+VISION RESULT:
 {vision_result}
 
-WEATHER DATA:
+WEATHER:
 Location: {location["name"]}
 Temperature: {temperature} °C
 Humidity: {humidity} %
-Current precipitation: {precipitation} mm
-Rain probability next 12 hours: {rain_probability} %
+Precipitation: {precipitation} mm
+Rain probability: {rain_probability} %
 
-VERIFICATION AGENT RESULT:
+VERIFICATION RESULT:
 {verification_result}
 
-Create a farmer-friendly decision.
+Create a simple and safe farmer action plan.
 
-Return exactly:
+Return:
 
 FARM STATUS:
 RISK LEVEL:
@@ -245,21 +241,23 @@ CONFIDENCE:
 Rules:
 Do not claim certainty from an image alone.
 Do not prescribe a specific pesticide, chemical or dosage.
-If the diagnosis is uncertain, clearly say so.
-Do not invent weather information.
-Use the actual weather data provided.
-Keep the final answer simple enough for a farmer to understand.
+If uncertain, clearly say so.
+Use only the weather information provided.
 """
 
-            with st.spinner("🧠 Decision Agent creating farm plan..."):
+            update_activity("🧠 Decision Agent creating farm action plan...")
 
-                decision_response = client.models.generate_content(
-                    model="gemini-3.6-flash",
-                    contents=decision_prompt
-                )
+            decision_response = client.models.generate_content(
+                model="gemini-3.6-flash",
+                contents=decision_prompt
+            )
 
             decision_result = decision_response.text
 
+            update_activity("✅ Farm action plan created")
+            update_activity("🎯 Investigation complete")
+
+            st.subheader("🧠 Decision Agent")
             st.write(decision_result)
 
             st.success(
@@ -267,7 +265,6 @@ Keep the final answer simple enough for a farmer to understand.
             )
 
         except Exception as e:
-
             st.error(
                 "Something went wrong. Please try again."
-           )
+            )
