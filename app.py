@@ -43,7 +43,13 @@ language = st.selectbox(
     "Choose response language",
     ["English", "తెలుగు"]
 )
+st.subheader("🤖 AI Analysis")
 
+ai_mode = st.radio(
+    "Choose AI mode",
+    ["AI OFF", "AI ON"],
+    horizontal=True
+)
 if uploaded_file:
 
     image = Image.open(
@@ -78,11 +84,17 @@ if uploaded_file:
                 "🟢 **Photo received**"
             )
 
-            activity.markdown(
-                "🟢 **Photo received**\n\n"
-                "🎤 **Farmer input received**\n\n"
-                "🌦️ **Weather Agent gathering data...**"
-            )
+            if ai_mode == "AI ON":
+    ai_status = "🤖 AI analysis enabled"
+else:
+    ai_status = "⏸️ AI analysis disabled"
+
+activity.markdown(
+    "🟢 **Photo received**\n\n"
+    "🎤 **Farmer input received**\n\n"
+    f"{ai_status}\n\n"
+    "🌦️ **Weather Agent gathering data...**"
+)
 
             geo_url = (
                 "https://geocoding-api.open-meteo.com/v1/search"
