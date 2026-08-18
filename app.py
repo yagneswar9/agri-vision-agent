@@ -2,6 +2,7 @@ import streamlit as st
 from google import genai
 from PIL import Image
 import requests
+import re
 
 st.set_page_config(
     page_title="Agri-Vision Agent",
@@ -11,7 +12,6 @@ st.set_page_config(
 
 st.title("🌾 Agri-Vision Agent")
 st.caption("Observe → Investigate → Verify → Decide")
-
 st.write("Self-verifying AI farming assistant")
 
 uploaded_file = st.file_uploader(
@@ -24,10 +24,8 @@ city = st.text_input("📍 Farm location", "Guntur")
 if uploaded_file:
     image = Image.open(uploaded_file).convert("RGB")
 
-    max_size = 1600
-
-    if max(image.size) > max_size:
-        image.thumbnail((max_size, max_size))
+    if max(image.size) > 1600:
+        image.thumbnail((1600, 1600))
 
     st.image(
         image,
@@ -59,7 +57,7 @@ if uploaded_file:
             vision_prompt = """
 You are the Vision Agent in an agricultural AI system.
 
-Analyze this crop image.
+Analyze the crop image.
 
 Return:
 
@@ -73,7 +71,7 @@ What should be checked next:
 Rules:
 An image alone cannot prove a disease.
 If the image is unclear, say the diagnosis is uncertain.
-Do not recommend a specific pesticide or chemical from the image alone.
+Do not recommend a specific pesticide or chemical.
 """
 
             vision_response = client.models.generate_content(
@@ -91,7 +89,9 @@ Do not recommend a specific pesticide or chemical from the image alone.
             st.subheader("👁️ Vision Agent")
             st.write(vision_result)
 
-            update_activity("🌦️ Weather Agent checking local weather...")
+            update_activity(
+                "🌦️ Weather Agent checking local weather..."
+            )
 
             geo_url = "https://geocoding-api.open-meteo.com/v1/search"
 
@@ -157,7 +157,11 @@ Do not recommend a specific pesticide or chemical from the image alone.
             st.write("📍 Location:", location["name"])
             st.write("🌡️ Temperature:", temperature, "°C")
             st.write("💧 Humidity:", humidity, "%")
-            st.write("🌧️ Current precipitation:", precipitation, "mm")
+            st.write(
+                "🌧️ Current precipitation:",
+                precipitation,
+                "mm"
+            )
             st.write(
                 "🌧️ Rain probability next 12 hours:",
                 rain_probability,
@@ -165,21 +169,19 @@ Do not recommend a specific pesticide or chemical from the image alone.
             )
 
             verification_prompt = f"""
-You are the Verification Agent in a farming AI system.
+You are the Verification Agent.
 
-VISION AGENT RESULT:
-
+VISION RESULT:
 {vision_result}
 
 REAL-TIME WEATHER:
-
 Location: {location["name"]}
 Temperature: {temperature} °C
 Humidity: {humidity} %
-Current precipitation: {precipitation} mm
-Rain probability next 12 hours: {rain_probability} %
+Precipitation: {precipitation} mm
+Rain probability: {rain_probability} %
 
-Compare the initial image-based diagnosis with the
+Compare the image-based suspicion with the
 environmental evidence.
 
 Return:
@@ -190,12 +192,14 @@ REASON:
 CONFLICTING EVIDENCE:
 NEXT STEP:
 
-Do not claim that weather alone proves or disproves a disease.
-Do not recommend a specific pesticide or chemical.
-If evidence is insufficient, clearly say that further verification is needed.
+Do not claim weather alone proves or disproves a disease.
+Do not recommend a specific pesticide.
+If evidence is insufficient, clearly say further verification is needed.
 """
 
-            update_activity("🔎 Verification Agent cross-checking evidence...")
+            update_activity(
+                "🔎 Verification Agent cross-checking evidence..."
+            )
 
             verification_response = client.models.generate_content(
                 model="gemini-3.6-flash",
@@ -204,7 +208,9 @@ If evidence is insufficient, clearly say that further verification is needed.
 
             verification_result = verification_response.text
 
-            update_activity("✅ Evidence verification completed")
+            update_activity(
+                "✅ Evidence verification completed"
+            )
 
             st.subheader("🔎 Verification Agent")
             st.write(verification_result)
@@ -225,9 +231,9 @@ Rain probability: {rain_probability} %
 VERIFICATION RESULT:
 {verification_result}
 
-Create a simple and safe farmer action plan.
+Create a simple farmer action plan.
 
-Return:
+Return exactly:
 
 FARM STATUS:
 RISK LEVEL:
@@ -245,7 +251,9 @@ If uncertain, clearly say so.
 Use only the weather information provided.
 """
 
-            update_activity("🧠 Decision Agent creating farm action plan...")
+            update_activity(
+                "🧠 Decision Agent creating farm action plan..."
+            )
 
             decision_response = client.models.generate_content(
                 model="gemini-3.6-flash",
@@ -257,14 +265,112 @@ Use only the weather information provided.
             update_activity("✅ Farm action plan created")
             update_activity("🎯 Investigation complete")
 
-            st.subheader("🧠 Decision Agent")
+            risk_match = re.search(
+                r"RISK LEVEL:\s*(.*)",
+                decision_result,
+                re.IGNORECASE
+            )
+
+            status_match = re.search(
+                r"FARM STATUS:\s*(.*)",
+                decision_result,
+                re.IGNORECASE
+            )
+
+            confidence_match = re.search(
+                r"CONFIDENCE:\s*(.*)",
+                decision_result,
+                re.IGNORECASE
+            )
+
+            problem_match = re.search(
+                r"WHAT IS MOST LIKELY HAPPENING:\s*(.*)",
+                decision_result,
+                re.IGNORECASE
+            )
+
+            risk = (
+                risk_match.group(1).strip()
+                if risk_match
+                else "See detailed report"
+            )
+
+            farm_status = (
+                status_match.group(1).strip()
+                if status_match
+                else "Assessment completed"
+            )
+
+            confidence = (
+                confidence_match.group(1).strip()
+                if confidence_match
+                else "See detailed report"
+            )
+
+            problem = (
+                problem_match.group(1).strip()
+                if problem_match
+                else "See detailed report"
+            )
+
+            st.divider()
+
+            st.subheader("📊 FARM HEALTH REPORT")
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+                st.metric(
+                    "🌡️ Temperature",
+                    f"{temperature} °C"
+                )
+
+            with col2:
+                st.metric(
+                    "💧 Humidity",
+                    f"{humidity}%"
+                )
+
+            col3, col4 = st.columns(2)
+
+            with col3:
+                st.metric(
+                    "🌧️ Rain Chance",
+                    f"{rain_probability}%"
+                )
+
+            with col4:
+                st.metric(
+                    "🎯 Risk Level",
+                    risk
+                )
+
+            st.info(
+                f"🌱 **Farm Status:** {farm_status}"
+            )
+
+            st.warning(
+                f"🔎 **Likely Problem:** {problem}"
+            )
+
+            st.info(
+                f"🎯 **AI Confidence:** {confidence}"
+            )
+
+            st.subheader("🧠 FINAL FARM DECISION")
             st.write(decision_result)
+
+            st.caption(
+                "⚠️ This is AI-based decision support, "
+                "not laboratory diagnosis or professional "
+                "agricultural advice."
+            )
 
             st.success(
                 "🌾 Agri-Vision Agent completed the investigation."
             )
 
-        except Exception as e:
+        except Exception:
             st.error(
                 "Something went wrong. Please try again."
             )
