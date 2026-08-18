@@ -208,6 +208,63 @@ If evidence is insufficient, clearly say that the diagnosis needs further verifi
             st.success(
                 "✅ Vision → Weather → Verification completed"
             )
+            st.subheader("🧠 Decision Agent")
+
+            decision_prompt = f"""
+You are the Decision Agent of Agri-Vision Agent.
+
+Your job is to convert verified agricultural evidence into a simple,
+safe and practical action plan for a farmer.
+
+VISION AGENT RESULT:
+{vision_result}
+
+WEATHER DATA:
+Location: {location["name"]}
+Temperature: {temperature} °C
+Humidity: {humidity} %
+Current precipitation: {precipitation} mm
+Rain probability next 12 hours: {rain_probability} %
+
+VERIFICATION AGENT RESULT:
+{verification_result}
+
+Create a farmer-friendly decision.
+
+Return exactly:
+
+FARM STATUS:
+RISK LEVEL:
+WHAT IS MOST LIKELY HAPPENING:
+WHAT TO DO NOW:
+WHAT TO CHECK NEXT:
+WEATHER ADVICE:
+WHEN TO RECHECK:
+CONFIDENCE:
+
+Rules:
+Do not claim certainty from an image alone.
+Do not prescribe a specific pesticide, chemical or dosage.
+If the diagnosis is uncertain, clearly say so.
+Do not invent weather information.
+Use the actual weather data provided.
+Keep the final answer simple enough for a farmer to understand.
+"""
+
+            with st.spinner("🧠 Decision Agent creating farm plan..."):
+
+                decision_response = client.models.generate_content(
+                    model="gemini-3.6-flash",
+                    contents=decision_prompt
+                )
+
+            decision_result = decision_response.text
+
+            st.write(decision_result)
+
+            st.success(
+                "🌾 Agri-Vision Agent completed the investigation."
+            )
 
         except Exception as e:
 
