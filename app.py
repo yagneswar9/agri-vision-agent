@@ -1,6 +1,9 @@
 import streamlit as st
+from google import genai
 from PIL import Image
 import requests
+import tempfile
+import os
 
 st.set_page_config(
     page_title="Agri-Vision Agent",
@@ -37,7 +40,9 @@ audio_value = st.audio_input(
 
 if audio_value:
     st.audio(audio_value)
-    st.success("🎤 Voice message recorded successfully.")
+    st.success(
+        "🎤 Voice message recorded successfully."
+    )
 
 st.subheader("🌐 Farmer Language")
 
@@ -56,10 +61,14 @@ ai_mode = st.radio(
 
 if uploaded_file:
 
-    image = Image.open(uploaded_file).convert("RGB")
+    image = Image.open(
+        uploaded_file
+    ).convert("RGB")
 
     if max(image.size) > 1600:
-        image.thumbnail((1600, 1600))
+        image.thumbnail(
+            (1600, 1600)
+        )
 
     st.image(
         image,
@@ -74,17 +83,14 @@ if uploaded_file:
 
         try:
 
-            st.subheader("🤖 Agent Activity")
-
-            if ai_mode == "AI ON":
-                ai_status = "🤖 AI analysis enabled"
-            else:
-                ai_status = "⏸️ AI analysis disabled"
+            st.subheader(
+                "🤖 Agent Activity"
+            )
 
             st.markdown(
                 "🟢 **Photo received**\n\n"
                 "🎤 **Farmer input received**\n\n"
-                f"{ai_status}\n\n"
+                "📍 **Farm location identified**\n\n"
                 "🌦️ **Weather Agent gathering data...**"
             )
 
@@ -160,7 +166,9 @@ if uploaded_file:
 
             current = weather["current"]
 
-            temperature = current["temperature_2m"]
+            temperature = current[
+                "temperature_2m"
+            ]
 
             humidity = current[
                 "relative_humidity_2m"
@@ -179,11 +187,13 @@ if uploaded_file:
             st.markdown(
                 "🟢 **Photo received**\n\n"
                 "🎤 **Farmer input received**\n\n"
-                "✅ **Weather data gathered**\n\n"
-                "🧠 **Smart Decision Engine analyzing...**"
+                "📍 **Location identified**\n\n"
+                "✅ **Weather data gathered**"
             )
 
-            st.subheader("🌦️ Weather Agent")
+            st.subheader(
+                "🌦️ Weather Agent"
+            )
 
             col1, col2 = st.columns(2)
 
@@ -220,9 +230,285 @@ if uploaded_file:
 
             st.divider()
 
-            st.subheader("🧠 Smart Decision Engine")
+            if ai_mode == "AI ON":
 
-            if temperature >= 35 and humidity < 50:
+                st.subheader(
+                    "🤖 Agri-Vision AI Agent"
+                )
+
+                if "GEMINI_API_KEY" not in st.secrets:
+
+                    st.error(
+                        "GEMINI_API_KEY is missing "
+                        "from Streamlit Secrets."
+                    )
+
+                    st.stop()
+
+                st.info(
+                    "One Gemini AI request will "
+                    "analyze the crop, farmer input "
+                    "and weather together."
+                )
+
+                client = genai.Client(
+                    api_key=st.secrets[
+                        "GEMINI_API_KEY"
+                    ]
+                )
+
+                prompt = f"""
+You are Agri-Vision Agent, an agricultural
+decision-support AI.
+
+Perform ONE coordinated investigation.
+
+INPUTS:
+
+1. Crop photograph.
+2. Farmer voice message, if provided.
+3. Farm location.
+4. Real-time weather.
+
+LOCATION:
+
+{location["name"]}
+
+TEMPERATURE:
+
+{temperature} °C
+
+HUMIDITY:
+
+{humidity} %
+
+CURRENT PRECIPITATION:
+
+{precipitation} mm
+
+RAIN PROBABILITY NEXT 12 HOURS:
+
+{rain_probability} %
+
+RESPONSE LANGUAGE:
+
+{language}
+
+Your workflow:
+
+STEP 1 — OBSERVE
+
+Analyze visible symptoms in the crop image.
+
+STEP 2 — UNDERSTAND
+
+Use the farmer's spoken problem if audio is
+provided.
+
+STEP 3 — VERIFY
+
+Compare the visual evidence and farmer's
+description with the real-time weather.
+
+Do not blindly trust the initial visual
+assessment.
+
+STEP 4 — DECIDE
+
+Create a practical and safe farm action plan.
+
+Return:
+
+🌱 CROP:
+Visible symptoms:
+
+🔎 POSSIBLE PROBLEM:
+Visual confidence:
+
+🔬 VERIFICATION:
+Does the environmental evidence support
+the suspicion?
+
+Supporting evidence:
+
+Conflicting evidence:
+
+🟡 RISK LEVEL:
+
+📋 WHAT TO DO NOW:
+
+🔍 WHAT TO CHECK NEXT:
+
+🌦️ WEATHER ADVICE:
+
+⏰ WHEN TO RECHECK:
+
+🎯 OVERALL CONFIDENCE:
+
+🤖 AGENT SUMMARY:
+
+Explain briefly how the agent connected
+the photo, farmer input and weather before
+reaching the decision.
+
+SAFETY:
+
+An image alone cannot prove a disease.
+
+Do not claim laboratory confirmation.
+
+Do not recommend a specific pesticide,
+chemical or dosage.
+
+If evidence is insufficient, say:
+"Further verification needed."
+
+Do not invent weather information.
+
+Keep the answer simple enough for a farmer.
+"""
+
+                try:
+
+                    if audio_value:
+
+                        audio_suffix = ".wav"
+
+                        if audio_value.type:
+                            if "mpeg" in audio_value.type:
+                                audio_suffix = ".mp3"
+                            elif "mp4" in audio_value.type:
+                                audio_suffix = ".mp4"
+
+                        with tempfile.NamedTemporaryFile(
+                            delete=False,
+                            suffix=audio_suffix
+                        ) as temp_audio:
+
+                            temp_audio.write(
+                                audio_value.getvalue()
+                            )
+
+                            audio_path = (
+                                temp_audio.name
+                            )
+
+                        try:
+
+                            audio_file = client.files.upload(
+                                file=audio_path
+                            )
+
+                            response = (
+                                client.models.generate_content(
+                                    model="gemini-3.6-flash",
+                                    contents=[
+                                        prompt,
+                                        image,
+                                        audio_file
+                                    ]
+                                )
+                            )
+
+                        finally:
+
+                            if os.path.exists(
+                                audio_path
+                            ):
+                                os.remove(
+                                    audio_path
+                                )
+
+                    else:
+
+                        response = (
+                            client.models.generate_content(
+                                model="gemini-3.6-flash",
+                                contents=[
+                                    prompt,
+                                    image
+                                ]
+                            )
+                        )
+
+                    if not response.text:
+
+                        st.error(
+                            "Gemini returned an empty response."
+                        )
+
+                        st.stop()
+
+                    st.markdown(
+                        "🟢 **Photo received**\n\n"
+                        "🎤 **Farmer input processed**\n\n"
+                        "🌦️ **Weather gathered**\n\n"
+                        "👁️ **Crop observed**\n\n"
+                        "🔎 **Evidence verified**\n\n"
+                        "🧠 **Farm decision generated**\n\n"
+                        "🎯 **Investigation complete**"
+                    )
+
+                    st.divider()
+
+                    st.subheader(
+                        "📋 AI FARM REPORT"
+                    )
+
+                    st.write(
+                        response.text
+                    )
+
+                except Exception as e:
+
+                    error_text = str(e)
+
+                    if "429" in error_text:
+
+                        st.warning(
+                            "⚠️ Gemini quota is currently "
+                            "exhausted. AI is temporarily "
+                            "unavailable."
+                        )
+
+                        st.info(
+                            "The Weather Agent and "
+                            "Smart Decision Engine can "
+                            "still operate without Gemini."
+                        )
+
+                    else:
+
+                        st.error(
+                            "The AI Agent encountered "
+                            "an error."
+                        )
+
+                        st.code(
+                            error_text
+                        )
+
+            else:
+
+                st.subheader(
+                    "⏸️ AI Agent"
+                )
+
+                st.info(
+                    "AI is currently OFF. "
+                    "No Gemini request will be made."
+                )
+
+            st.divider()
+
+            st.subheader(
+                "🧠 Smart Environmental Decision"
+            )
+
+            if (
+                temperature >= 35
+                and humidity < 50
+            ):
 
                 risk_level = "🟡 Moderate"
 
@@ -233,12 +519,6 @@ if uploaded_file:
                 action = (
                     "Monitor the crop closely "
                     "and check soil moisture."
-                )
-
-                weather_advice = (
-                    "High temperature and low "
-                    "humidity may increase "
-                    "plant water stress."
                 )
 
             elif (
@@ -255,14 +535,8 @@ if uploaded_file:
 
                 action = (
                     "Inspect leaves carefully "
-                    "and monitor for rapid "
-                    "spread of visible symptoms."
-                )
-
-                weather_advice = (
-                    "Wet conditions may increase "
-                    "the risk of moisture-related "
-                    "crop problems."
+                    "and monitor for visible "
+                    "symptom changes."
                 )
 
             elif rain_probability >= 70:
@@ -279,11 +553,6 @@ if uploaded_file:
                     "after rainfall."
                 )
 
-                weather_advice = (
-                    "Rain is likely during "
-                    "the next several hours."
-                )
-
             elif humidity >= 75:
 
                 risk_level = "🟡 Moderate"
@@ -295,12 +564,6 @@ if uploaded_file:
                 action = (
                     "Inspect affected leaves "
                     "and monitor for changes."
-                )
-
-                weather_advice = (
-                    "Higher humidity can "
-                    "increase moisture-related "
-                    "crop risk."
                 )
 
             else:
@@ -317,14 +580,9 @@ if uploaded_file:
                     "monitoring."
                 )
 
-                weather_advice = (
-                    "Current weather does not "
-                    "show a major environmental "
-                    "warning."
-                )
-
             st.success(
-                f"🎯 Environmental Risk: {risk_level}"
+                f"🎯 Environmental Risk: "
+                f"{risk_level}"
             )
 
             st.write(
@@ -337,70 +595,11 @@ if uploaded_file:
                 action
             )
 
-            st.write(
-                "🌦️ Weather advice:",
-                weather_advice
-            )
-
-            st.caption(
-                "This is a preliminary environmental "
-                "assessment. It is not a disease diagnosis."
-            )
-
             st.divider()
 
-            st.subheader("🔎 Verification Stage")
-
-            if ai_mode == "AI ON":
-
-                st.info(
-                    "🤖 AI verification is selected. "
-                    "Gemini connection will be added "
-                    "in the next stage."
-                )
-
-            else:
-
-                st.info(
-                    "⏸️ AI verification is currently "
-                    "disabled. No Gemini API request "
-                    "is being made."
-                )
-
-            st.subheader("🧠 Decision Stage")
-
-            if language == "తెలుగు":
-
-                st.write("🇮🇳 భాష: తెలుగు")
-
-                st.write(
-                    "ప్రస్తుత వాతావరణ పరిస్థితులను "
-                    "బట్టి పంటను గమనించండి."
-                )
-
-                st.write(
-                    "📋 తదుపరి చర్య:",
-                    action
-                )
-
-            else:
-
-                st.write("🇬🇧 Language: English")
-
-                st.write(
-                    "Monitor the crop using "
-                    "the current environmental "
-                    "conditions."
-                )
-
-                st.write(
-                    "📋 Next action:",
-                    action
-                )
-
-            st.divider()
-
-            st.subheader("📊 Farm Health Report")
+            st.subheader(
+                "📊 FARM HEALTH REPORT"
+            )
 
             col1, col2 = st.columns(2)
 
@@ -426,7 +625,7 @@ if uploaded_file:
 
             with col4:
                 st.metric(
-                    "🎯 Risk",
+                    "🎯 Environmental Risk",
                     risk_level
                 )
 
@@ -438,54 +637,90 @@ if uploaded_file:
                 f"🌱 Condition: {farm_condition}"
             )
 
-            st.subheader("🤖 Agent Activity")
+            if language == "తెలుగు":
 
-            st.markdown(
-                "🟢 **Photo received**\n\n"
-                "🟢 **Farmer input received**\n\n"
-                "🟢 **Location identified**\n\n"
-                "🟢 **Weather data retrieved**\n\n"
-                "🟢 **Environmental conditions analyzed**\n\n"
-                "🟢 **Farm action framework created**"
-            )
+                st.subheader(
+                    "🇮🇳 రైతు కోసం సూచన"
+                )
 
-            if ai_mode == "AI ON":
+                st.write(
+                    "ప్రస్తుత వాతావరణ పరిస్థితులను "
+                    "బట్టి పంటను గమనించండి."
+                )
 
-                st.warning(
-                    "⚠️ AI provider connection is "
-                    "not active yet. No Gemini request "
-                    "was made."
+                st.write(
+                    "తదుపరి చర్య:",
+                    action
                 )
 
             else:
 
-                st.success(
-                    "⏸️ AI is OFF. "
-                    "No Gemini quota was used."
+                st.subheader(
+                    "🇬🇧 Farmer Guidance"
                 )
 
-            st.success(
-                "🌾 Farm investigation framework completed."
+                st.write(
+                    "Monitor the crop using "
+                    "the current environmental "
+                    "conditions."
+                )
+
+                st.write(
+                    "Next action:",
+                    action
+                )
+
+            st.divider()
+
+            st.subheader(
+                "🤖 COMPLETE AGENT WORKFLOW"
             )
 
+            st.markdown(
+                "🟢 **1. Photo received**\n\n"
+                "🟢 **2. Farmer input received**\n\n"
+                "🟢 **3. Location identified**\n\n"
+                "🟢 **4. Weather gathered**\n\n"
+                "🟢 **5. Environmental conditions analyzed**\n\n"
+                "🟢 **6. Farm decision prepared**"
+            )
+
+            if ai_mode == "AI ON":
+
+                st.success(
+                    "🎯 AI Agent completed its "
+                    "investigation."
+                )
+
+            else:
+
+                st.info(
+                    "⏸️ AI is OFF. "
+                    "The application is running "
+                    "in safe development mode."
+                )
+
             st.caption(
-                "⚠️ This system provides preliminary "
-                "decision support and does not replace "
-                "professional agricultural diagnosis."
+                "⚠️ AI decision support only. "
+                "Image analysis is not laboratory "
+                "confirmation."
             )
 
         except requests.exceptions.RequestException:
 
             st.error(
                 "🌐 Network error. "
-                "Please check your internet connection "
+                "Check your internet connection "
                 "and try again."
             )
 
         except Exception as e:
 
             st.error(
-                "The farm investigation encountered an error."
+                "The farm investigation "
+                "encountered an error."
             )
 
-            st.code(str(e))
+            st.code(
+                str(e)
+            )
