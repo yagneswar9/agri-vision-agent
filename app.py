@@ -9,19 +9,23 @@ st.set_page_config(
 )
 
 st.title("🌾 Agri-Vision Agent")
-st.caption("Observe → Investigate → Verify → Decide")
+st.caption("Observe • Investigate • Verify • Decide")
 
 st.write(
     "AI-powered farming decision-support system"
 )
 
+st.subheader("📷 Crop Photo")
+
 uploaded_file = st.file_uploader(
-    "📷 Upload a crop photo",
+    "Upload a crop photo",
     type=["jpg", "jpeg", "png"]
 )
 
+st.subheader("📍 Farm Location")
+
 city = st.text_input(
-    "📍 Farm location",
+    "Enter your farm location",
     "Guntur"
 )
 
@@ -33,9 +37,7 @@ audio_value = st.audio_input(
 
 if audio_value:
     st.audio(audio_value)
-    st.success(
-        "🎤 Voice message recorded successfully."
-    )
+    st.success("🎤 Voice message recorded successfully.")
 
 st.subheader("🌐 Farmer Language")
 
@@ -43,6 +45,7 @@ language = st.selectbox(
     "Choose response language",
     ["English", "తెలుగు"]
 )
+
 st.subheader("🤖 AI Analysis")
 
 ai_mode = st.radio(
@@ -50,16 +53,13 @@ ai_mode = st.radio(
     ["AI OFF", "AI ON"],
     horizontal=True
 )
+
 if uploaded_file:
 
-    image = Image.open(
-        uploaded_file
-    ).convert("RGB")
+    image = Image.open(uploaded_file).convert("RGB")
 
     if max(image.size) > 1600:
-        image.thumbnail(
-            (1600, 1600)
-        )
+        image.thumbnail((1600, 1600))
 
     st.image(
         image,
@@ -74,27 +74,19 @@ if uploaded_file:
 
         try:
 
-            st.subheader(
-                "🤖 Agent Activity"
-            )
-
-            activity = st.empty()
-
-            activity.markdown(
-                "🟢 **Photo received**"
-            )
+            st.subheader("🤖 Agent Activity")
 
             if ai_mode == "AI ON":
-    ai_status = "🤖 AI analysis enabled"
-else:
-    ai_status = "⏸️ AI analysis disabled"
+                ai_status = "🤖 AI analysis enabled"
+            else:
+                ai_status = "⏸️ AI analysis disabled"
 
-activity.markdown(
-    "🟢 **Photo received**\n\n"
-    "🎤 **Farmer input received**\n\n"
-    f"{ai_status}\n\n"
-    "🌦️ **Weather Agent gathering data...**"
-)
+            st.markdown(
+                "🟢 **Photo received**\n\n"
+                "🎤 **Farmer input received**\n\n"
+                f"{ai_status}\n\n"
+                "🌦️ **Weather Agent gathering data...**"
+            )
 
             geo_url = (
                 "https://geocoding-api.open-meteo.com/v1/search"
@@ -114,23 +106,17 @@ activity.markdown(
             )
 
             if geo_response.status_code != 200:
-
                 st.error(
-                    "Unable to connect to "
-                    "location service."
+                    "Unable to connect to location service."
                 )
-
                 st.stop()
 
             geo_data = geo_response.json()
 
             if "results" not in geo_data:
-
                 st.error(
-                    "Location not found. "
-                    "Try another city."
+                    "Location not found. Try another city."
                 )
-
                 st.stop()
 
             location = geo_data["results"][0]
@@ -165,20 +151,16 @@ activity.markdown(
             )
 
             if weather_response.status_code != 200:
-
                 st.error(
                     "Unable to retrieve weather."
                 )
-
                 st.stop()
 
             weather = weather_response.json()
 
             current = weather["current"]
 
-            temperature = current[
-                "temperature_2m"
-            ]
+            temperature = current["temperature_2m"]
 
             humidity = current[
                 "relative_humidity_2m"
@@ -194,28 +176,24 @@ activity.markdown(
                 ][:12]
             )
 
-            activity.markdown(
+            st.markdown(
                 "🟢 **Photo received**\n\n"
                 "🎤 **Farmer input received**\n\n"
                 "✅ **Weather data gathered**\n\n"
                 "🧠 **Smart Decision Engine analyzing...**"
             )
 
-            st.subheader(
-                "🌦️ Weather Agent"
-            )
+            st.subheader("🌦️ Weather Agent")
 
             col1, col2 = st.columns(2)
 
             with col1:
-
                 st.metric(
                     "🌡️ Temperature",
                     f"{temperature} °C"
                 )
 
             with col2:
-
                 st.metric(
                     "💧 Humidity",
                     f"{humidity}%"
@@ -224,14 +202,12 @@ activity.markdown(
             col3, col4 = st.columns(2)
 
             with col3:
-
                 st.metric(
                     "🌧️ Rain Chance",
                     f"{rain_probability}%"
                 )
 
             with col4:
-
                 st.metric(
                     "📍 Location",
                     location["name"]
@@ -239,20 +215,14 @@ activity.markdown(
 
             st.write(
                 "Current precipitation:",
-                precipitation,
-                "mm"
+                f"{precipitation} mm"
             )
 
             st.divider()
 
-            st.subheader(
-                "🧠 Smart Decision Engine"
-            )
+            st.subheader("🧠 Smart Decision Engine")
 
-            if (
-                temperature >= 35
-                and humidity < 50
-            ):
+            if temperature >= 35 and humidity < 50:
 
                 risk_level = "🟡 Moderate"
 
@@ -354,7 +324,7 @@ activity.markdown(
                 )
 
             st.success(
-                f"🎯 Risk Level: {risk_level}"
+                f"🎯 Environmental Risk: {risk_level}"
             )
 
             st.write(
@@ -373,49 +343,49 @@ activity.markdown(
             )
 
             st.caption(
-                "This is a preliminary "
-                "environmental assessment. "
-                "It is not a disease diagnosis."
+                "This is a preliminary environmental "
+                "assessment. It is not a disease diagnosis."
             )
 
             st.divider()
 
-            st.subheader(
-                "🔎 Verification Stage"
-            )
+            st.subheader("🔎 Verification Stage")
 
-            st.info(
-                "AI verification will compare "
-                "the crop image, farmer input, "
-                "and weather conditions when "
-                "the AI provider is available."
-            )
+            if ai_mode == "AI ON":
 
-            st.subheader(
-                "🧠 Decision Stage"
-            )
+                st.info(
+                    "🤖 AI verification is selected. "
+                    "Gemini connection will be added "
+                    "in the next stage."
+                )
+
+            else:
+
+                st.info(
+                    "⏸️ AI verification is currently "
+                    "disabled. No Gemini API request "
+                    "is being made."
+                )
+
+            st.subheader("🧠 Decision Stage")
 
             if language == "తెలుగు":
 
+                st.write("🇮🇳 భాష: తెలుగు")
+
                 st.write(
-                    "భాష: తెలుగు"
+                    "ప్రస్తుత వాతావరణ పరిస్థితులను "
+                    "బట్టి పంటను గమనించండి."
                 )
 
                 st.write(
-                    "ప్రస్తుత వాతావరణ ఆధారంగా "
-                    "పంటను గమనించండి."
-                )
-
-                st.write(
-                    "తదుపరి చర్య:",
+                    "📋 తదుపరి చర్య:",
                     action
                 )
 
             else:
 
-                st.write(
-                    "Language: English"
-                )
+                st.write("🇬🇧 Language: English")
 
                 st.write(
                     "Monitor the crop using "
@@ -424,27 +394,23 @@ activity.markdown(
                 )
 
                 st.write(
-                    "Next action:",
+                    "📋 Next action:",
                     action
                 )
 
             st.divider()
 
-            st.subheader(
-                "📊 FARM HEALTH REPORT"
-            )
+            st.subheader("📊 Farm Health Report")
 
             col1, col2 = st.columns(2)
 
             with col1:
-
                 st.metric(
                     "🌡️ Temperature",
                     f"{temperature} °C"
                 )
 
             with col2:
-
                 st.metric(
                     "💧 Humidity",
                     f"{humidity}%"
@@ -453,14 +419,12 @@ activity.markdown(
             col3, col4 = st.columns(2)
 
             with col3:
-
                 st.metric(
                     "🌧️ Rain Chance",
                     f"{rain_probability}%"
                 )
 
             with col4:
-
                 st.metric(
                     "🎯 Risk",
                     risk_level
@@ -474,32 +438,54 @@ activity.markdown(
                 f"🌱 Condition: {farm_condition}"
             )
 
-            activity.markdown(
+            st.subheader("🤖 Agent Activity")
+
+            st.markdown(
                 "🟢 **Photo received**\n\n"
-                "🎤 **Farmer input received**\n\n"
-                "✅ **Weather data gathered**\n\n"
-                "🧠 **Environmental decision completed**\n\n"
-                "⏸️ **AI verification waiting for provider**"
+                "🟢 **Farmer input received**\n\n"
+                "🟢 **Location identified**\n\n"
+                "🟢 **Weather data retrieved**\n\n"
+                "🟢 **Environmental conditions analyzed**\n\n"
+                "🟢 **Farm action framework created**"
             )
 
+            if ai_mode == "AI ON":
+
+                st.warning(
+                    "⚠️ AI provider connection is "
+                    "not active yet. No Gemini request "
+                    "was made."
+                )
+
+            else:
+
+                st.success(
+                    "⏸️ AI is OFF. "
+                    "No Gemini quota was used."
+                )
+
             st.success(
-                "🌾 Farm investigation framework "
-                "completed."
+                "🌾 Farm investigation framework completed."
             )
 
             st.caption(
                 "⚠️ This system provides preliminary "
-                "decision support. It does not replace "
+                "decision support and does not replace "
                 "professional agricultural diagnosis."
+            )
+
+        except requests.exceptions.RequestException:
+
+            st.error(
+                "🌐 Network error. "
+                "Please check your internet connection "
+                "and try again."
             )
 
         except Exception as e:
 
             st.error(
-                "The farm investigation "
-                "encountered an error."
+                "The farm investigation encountered an error."
             )
 
-            st.code(
-                str(e)
-            )
+            st.code(str(e))
