@@ -54,7 +54,7 @@ Confidence:
 Evidence:
 What should be checked next:
 
-Important rules:
+Important:
 An image alone cannot prove a disease.
 If the image is unclear, say the diagnosis is uncertain.
 Do not recommend a specific pesticide or chemical from the image alone.
@@ -79,47 +79,87 @@ Do not recommend a specific pesticide or chemical from the image alone.
 
             st.subheader("🌦️ Weather Agent")
 
-            weather_url = "https://api.openweathermap.org/data/2.5/weather"
+            with st.spinner("🌦️ Checking local weather..."):
 
-            params = {
-                "q": city,
-                "appid": st.secrets["WEATHER_API_KEY"],
-                "units": "metric"
-            }
+                geo_url = "https://geocoding-api.open-meteo.com/v1/search"
 
-            with st.spinner("🌦️ Checking weather..."):
+                geo_params = {
+                    "name": city,
+                    "count": 1,
+                    "language": "en",
+                    "format": "json"
+                }
 
-                weather_response = requests.get(
-                    weather_url,
-                    params=params,
+                geo_response = requests.get(
+                    geo_url,
+                    params=geo_params,
                     timeout=15
                 )
 
-            if weather_response.status_code == 200:
+                if geo_response.status_code != 200:
+                    st.error("Unable to find the location.")
+                    st.stop()
+
+                geo_data = geo_response.json()
+
+                if "results" not in geo_data:
+                    st.error("Location not found. Try another city.")
+                    st.stop()
+
+                location = geo_data["results"][0]
+
+                latitude = location["latitude"]
+                longitude = location["longitude"]
+
+                weather_url = "https://api.open-meteo.com/v1/forecast"
+
+                weather_params = {
+                    "latitude": latitude,
+                    "longitude": longitude,
+                    "current": "temperature_2m,relative_humidity_2m,precipitation,weather_code",
+                    "hourly": "temperature_2m,relative_humidity_2m,precipitation_probability,precipitation",
+                    "forecast_days": 2,
+                    "timezone": "auto"
+                }
+
+                weather_response = requests.get(
+                    weather_url,
+                    params=weather_params,
+                    timeout=15
+                )
+
+                if weather_response.status_code != 200:
+                    st.error("Unable to get weather information.")
+                    st.stop()
 
                 weather = weather_response.json()
 
-                temperature = weather["main"]["temp"]
-                humidity = weather["main"]["humidity"]
-                description = weather["weather"][0]["description"]
+            current = weather["current"]
 
-                st.write("📍 Location:", city)
-                st.write("🌡️ Temperature:", temperature, "°C")
-                st.write("💧 Humidity:", humidity, "%")
-                st.write("☁️ Conditions:", description)
+            temperature = current["temperature_2m"]
+            humidity = current["relative_humidity_2m"]
+            precipitation = current["precipitation"]
 
-            else:
-                st.error(
-                    "Weather service could not find this location."
-                )
+            st.write("📍 Location:", location["name"])
+            st.write("🌡️ Temperature:", temperature, "°C")
+            st.write("💧 Humidity:", humidity, "%")
+            st.write("🌧️ Current precipitation:", precipitation, "mm")
 
-        except Exception as e:
+            hourly = weather["hourly"]
 
-            st.error(
-                "The AI service temporarily failed. Please try again."
+            rain_probability = max(
+                hourly["precipitation_probability"][:12]
             )
 
-            st.info(
-                "If the problem continues, check the Gemini API key "
-                "and API usage limits."
+            st.write(
+                "🌧️ Maximum rain probability in next 12 hours:",
+                rain_probability,
+                "%"
+            )
+
+            st.success("🌦️ Weather data successfully retrieved.")
+
+        except Exception:
+            st.error(
+                "Something went wrong while connecting to the AI or weather service."
             )
