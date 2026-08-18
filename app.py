@@ -24,6 +24,12 @@ city = st.text_input(
     "📍 Farm location",
     "Guntur"
 )
+st.subheader("🌐 Farmer Language")
+
+language = st.selectbox(
+    "Choose response language",
+    ["English", "తెలుగు"]
+)
 st.subheader("🎤 Farmer Voice")
 
 audio_value = st.audio_input(
