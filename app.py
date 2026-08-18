@@ -24,12 +24,7 @@ city = st.text_input(
     "📍 Farm location",
     "Guntur"
 )
-st.subheader("🌐 Farmer Language")
 
-language = st.selectbox(
-    "Choose response language",
-    ["English", "తెలుగు"]
-)
 st.subheader("🎤 Farmer Voice")
 
 audio_value = st.audio_input(
@@ -38,10 +33,16 @@ audio_value = st.audio_input(
 
 if audio_value:
     st.audio(audio_value)
-
     st.success(
         "🎤 Voice message recorded successfully."
     )
+
+st.subheader("🌐 Farmer Language")
+
+language = st.selectbox(
+    "Choose response language",
+    ["English", "తెలుగు"]
+)
 
 if uploaded_file:
 
@@ -65,22 +66,23 @@ if uploaded_file:
         use_container_width=True
     ):
 
-        st.subheader(
-            "🤖 Agent Activity"
-        )
-
-        activity = st.empty()
-
-        activity.markdown(
-            "🟢 **Photo received**"
-        )
-
-        activity.markdown(
-            "🟢 **Photo received**\n\n"
-            "🌦️ **Weather Agent gathering data...**"
-        )
-
         try:
+
+            st.subheader(
+                "🤖 Agent Activity"
+            )
+
+            activity = st.empty()
+
+            activity.markdown(
+                "🟢 **Photo received**"
+            )
+
+            activity.markdown(
+                "🟢 **Photo received**\n\n"
+                "🎤 **Farmer input received**\n\n"
+                "🌦️ **Weather Agent gathering data...**"
+            )
 
             geo_url = (
                 "https://geocoding-api.open-meteo.com/v1/search"
@@ -100,9 +102,12 @@ if uploaded_file:
             )
 
             if geo_response.status_code != 200:
+
                 st.error(
-                    "Unable to connect to location service."
+                    "Unable to connect to "
+                    "location service."
                 )
+
                 st.stop()
 
             geo_data = geo_response.json()
@@ -110,7 +115,8 @@ if uploaded_file:
             if "results" not in geo_data:
 
                 st.error(
-                    "Location not found."
+                    "Location not found. "
+                    "Try another city."
                 )
 
                 st.stop()
@@ -178,8 +184,9 @@ if uploaded_file:
 
             activity.markdown(
                 "🟢 **Photo received**\n\n"
+                "🎤 **Farmer input received**\n\n"
                 "✅ **Weather data gathered**\n\n"
-                "📊 **Preparing farm investigation...**"
+                "🧠 **Smart Decision Engine analyzing...**"
             )
 
             st.subheader(
@@ -227,74 +234,251 @@ if uploaded_file:
             st.divider()
 
             st.subheader(
-                "🤖 AI Agent"
+                "🧠 Smart Decision Engine"
             )
 
-            st.warning(
-                "🟡 AI analysis is temporarily "
-                "paused because the AI provider "
-                "quota is unavailable."
+            if (
+                temperature >= 35
+                and humidity < 50
+            ):
+
+                risk_level = "🟡 Moderate"
+
+                farm_condition = (
+                    "Hot and relatively dry"
+                )
+
+                action = (
+                    "Monitor the crop closely "
+                    "and check soil moisture."
+                )
+
+                weather_advice = (
+                    "High temperature and low "
+                    "humidity may increase "
+                    "plant water stress."
+                )
+
+            elif (
+                humidity >= 80
+                and rain_probability >= 60
+            ):
+
+                risk_level = "🟠 Elevated"
+
+                farm_condition = (
+                    "High humidity and high "
+                    "rain probability"
+                )
+
+                action = (
+                    "Inspect leaves carefully "
+                    "and monitor for rapid "
+                    "spread of visible symptoms."
+                )
+
+                weather_advice = (
+                    "Wet conditions may increase "
+                    "the risk of moisture-related "
+                    "crop problems."
+                )
+
+            elif rain_probability >= 70:
+
+                risk_level = "🟡 Moderate"
+
+                farm_condition = (
+                    "High probability of rain"
+                )
+
+                action = (
+                    "Monitor the crop and "
+                    "recheck conditions "
+                    "after rainfall."
+                )
+
+                weather_advice = (
+                    "Rain is likely during "
+                    "the next several hours."
+                )
+
+            elif humidity >= 75:
+
+                risk_level = "🟡 Moderate"
+
+                farm_condition = (
+                    "Relatively humid conditions"
+                )
+
+                action = (
+                    "Inspect affected leaves "
+                    "and monitor for changes."
+                )
+
+                weather_advice = (
+                    "Higher humidity can "
+                    "increase moisture-related "
+                    "crop risk."
+                )
+
+            else:
+
+                risk_level = "🟢 Low environmental alert"
+
+                farm_condition = (
+                    "No major environmental "
+                    "warning detected"
+                )
+
+                action = (
+                    "Continue normal crop "
+                    "monitoring."
+                )
+
+                weather_advice = (
+                    "Current weather does not "
+                    "show a major environmental "
+                    "warning."
+                )
+
+            st.success(
+                f"🎯 Risk Level: {risk_level}"
             )
 
-            st.info(
-                "The farming investigation "
-                "framework is working correctly. "
-                "AI analysis will be connected "
-                "when the provider is available."
+            st.write(
+                "🌱 Environmental condition:",
+                farm_condition
             )
+
+            st.write(
+                "📋 Recommended next step:",
+                action
+            )
+
+            st.write(
+                "🌦️ Weather advice:",
+                weather_advice
+            )
+
+            st.caption(
+                "This is a preliminary "
+                "environmental assessment. "
+                "It is not a disease diagnosis."
+            )
+
+            st.divider()
 
             st.subheader(
                 "🔎 Verification Stage"
             )
 
-            st.write(
-                "Waiting for AI analysis..."
+            st.info(
+                "AI verification will compare "
+                "the crop image, farmer input, "
+                "and weather conditions when "
+                "the AI provider is available."
             )
 
             st.subheader(
                 "🧠 Decision Stage"
             )
 
-            st.write(
-                "Waiting for verified AI evidence..."
-            )
+            if language == "తెలుగు":
+
+                st.write(
+                    "భాష: తెలుగు"
+                )
+
+                st.write(
+                    "ప్రస్తుత వాతావరణ ఆధారంగా "
+                    "పంటను గమనించండి."
+                )
+
+                st.write(
+                    "తదుపరి చర్య:",
+                    action
+                )
+
+            else:
+
+                st.write(
+                    "Language: English"
+                )
+
+                st.write(
+                    "Monitor the crop using "
+                    "the current environmental "
+                    "conditions."
+                )
+
+                st.write(
+                    "Next action:",
+                    action
+                )
 
             st.divider()
 
             st.subheader(
-                "📊 FARM MONITOR"
+                "📊 FARM HEALTH REPORT"
+            )
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+
+                st.metric(
+                    "🌡️ Temperature",
+                    f"{temperature} °C"
+                )
+
+            with col2:
+
+                st.metric(
+                    "💧 Humidity",
+                    f"{humidity}%"
+                )
+
+            col3, col4 = st.columns(2)
+
+            with col3:
+
+                st.metric(
+                    "🌧️ Rain Chance",
+                    f"{rain_probability}%"
+                )
+
+            with col4:
+
+                st.metric(
+                    "🎯 Risk",
+                    risk_level
+                )
+
+            st.info(
+                f"📍 Farm: {location['name']}"
             )
 
             st.info(
-                f"🌱 Farm location: {location['name']}"
-            )
-
-            st.info(
-                f"🌡️ Current temperature: "
-                f"{temperature} °C"
-            )
-
-            st.info(
-                f"💧 Current humidity: "
-                f"{humidity}%"
-            )
-
-            st.info(
-                f"🌧️ Rain probability: "
-                f"{rain_probability}%"
+                f"🌱 Condition: {farm_condition}"
             )
 
             activity.markdown(
                 "🟢 **Photo received**\n\n"
+                "🎤 **Farmer input received**\n\n"
                 "✅ **Weather data gathered**\n\n"
-                "⏸️ **AI analysis waiting for provider**\n\n"
-                "🔎 **Verification waiting**\n\n"
-                "🧠 **Decision waiting**"
+                "🧠 **Environmental decision completed**\n\n"
+                "⏸️ **AI verification waiting for provider**"
             )
 
             st.success(
                 "🌾 Farm investigation framework "
-                "is ready."
+                "completed."
+            )
+
+            st.caption(
+                "⚠️ This system provides preliminary "
+                "decision support. It does not replace "
+                "professional agricultural diagnosis."
             )
 
         except Exception as e:
