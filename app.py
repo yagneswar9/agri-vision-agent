@@ -24,6 +24,18 @@ city = st.text_input(
     "📍 Farm location",
     "Guntur"
 )
+st.subheader("🎤 Farmer Voice")
+
+audio_value = st.audio_input(
+    "Speak your farming problem"
+)
+
+if audio_value:
+    st.audio(audio_value)
+
+    st.success(
+        "🎤 Voice message recorded successfully."
+    )
 
 if uploaded_file:
 
