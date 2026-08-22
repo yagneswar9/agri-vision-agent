@@ -10,6 +10,40 @@ st.set_page_config(
     page_icon="🌾",
     layout="centered"
 )
+st.markdown("""
+<style>
+.block-container {
+    max-width: 900px;
+    padding-top: 1rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
+}
+.stButton > button {
+    width: 100%;
+    min-height: 55px;
+    border-radius: 12px;
+    font-size: 18px;
+    font-weight: 600;
+}
+h1 {
+    text-align: center;
+}
+@media (max-width: 600px) {
+    .block-container {
+        padding: 0.8rem;
+    }
+    h1 {
+        font-size: 30px;
+    }
+    h2 {
+        font-size: 24px;
+    }
+    h3 {
+        font-size: 20px;
+    }
+}
+</style>
+""", unsafe_allow_html=True)
 
 st.title("🌾 Agri-Vision Agent")
 st.caption("Observe • Investigate • Verify • Decide")
